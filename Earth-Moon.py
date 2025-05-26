@@ -4,38 +4,25 @@ from scipy.integrate import solve_ivp
 from scipy.optimize import fsolve
 
 # --- 1. Constants for Earth-Moon System ---
-# Gravitational constant (m^3 kg^-1 s^-2)
 G = 6.67430e-11
-# Mass of Earth (kg)
 m_E = 5.97219e24
-# Mass of Moon (kg)
 m_M = 7.342e22
-# Average Earth-Moon distance (m)
 L_EM = 3.844e8
 
 # --- 2. Normalized Units and Mass Parameter ---
-# Total mass of the system
 M_total = m_E + m_M
-# Mass parameter (mu) - ratio of Moon's mass to total mass
 mu = m_M / M_total
 
-# Angular velocity of the rotating frame
 omega = np.sqrt(G * M_total / L_EM**3)
-
-# Unit of time (s) in the normalized system
 T_unit = 1 / omega
-
-# Unit of velocity (m/s) in the normalized system
 V_unit = L_EM * omega
 
 # --- 3. CRTBP Equations of Motion (Normalized) ---
 # This function defines the differential equations for the Circular Restricted Three-Body Problem.
-# The state vector is [x, y, vx, vy], representing position and velocity in the rotating frame.
 def crtbp_ode(t, state, mu):
     x, y, vx, vy = state
 
     # Calculate squared distances from the third body to Earth (primary) and Moon (secondary)
-    # Earth is at (-mu, 0), Moon is at (1-mu, 0) in the normalized rotating frame.
     r1_squared = (x + mu)**2 + y**2
     r2_squared = (x - (1 - mu))**2 + y**2
 
@@ -49,12 +36,9 @@ def crtbp_ode(t, state, mu):
     dU_dy = y - (1 - mu) * y / r1_cubed - mu * y / r2_cubed
 
     # Equations of motion in the rotating frame
-    # ax = 2 * vy + dU/dx
-    # ay = -2 * vx + dU/dy
     ax = 2 * vy + dU_dx
     ay = -2 * vx + dU_dy
 
-    # Return the derivatives of the state vector: [vx, vy, ax, ay]
     return [vx, vy, ax, ay]
 
 # --- 4. Calculate Lagrange Points L1 and L2 ---
@@ -65,27 +49,17 @@ def lagrange_equation(x, mu):
     # This equation is derived from dU/dx = 0
     return x - (1 - mu) * (x + mu) / np.abs(x + mu)**3 - mu * (x - (1 - mu)) / np.abs(x - (1 - mu))**3
 
-# Initial guesses for L1 and L2 positions in normalized units.
-# These are approximate formulas derived from the CRTBP.
-# L1 is between Earth and Moon.
 x_L1_guess = 1 - mu - (mu/3)**(1/3)
-# L2 is beyond the Moon.
 x_L2_guess = 1 - mu + (mu/3)**(1/3)
 
-# Use scipy's fsolve to find the precise roots of the lagrange_equation.
 L1_x = fsolve(lagrange_equation, x_L1_guess, args=(mu,))[0]
 L2_x = fsolve(lagrange_equation, x_L2_guess, args=(mu,))[0]
 
-# Convert Lagrange point x-coordinates from normalized units to kilometers for plotting.
 L1_x_km = L1_x * L_EM / 1000
 L2_x_km = L2_x * L_EM / 1000
 
 # --- 5. Lyapunov Orbits (Approximation) ---
 # Lyapunov orbits are periodic orbits around the collinear Lagrange points (L1, L2, L3).
-# Achieving perfectly closed Lyapunov orbits requires highly precise initial conditions,
-# often found through iterative methods like differential correction or numerical continuation.
-# For this example, we use approximate initial conditions that will produce orbits
-# visually resembling Lyapunov orbits, though they may not be perfectly closed.
 
 # Desired y-amplitude for the orbits, based on the provided image (approx. 40,000 km).
 y_amplitude_km = 40000
